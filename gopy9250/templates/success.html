@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Точки на карте</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #saved-points {
+            margin-top: 30px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+
+
+        #map { 
+            height: 500px; 
+            margin: 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 0 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .btn-remove-input {
+            background-color: #f44336;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #current-coords {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .btn-submit {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Точки на карте</h1>
+        <div id="map"></div>
+
+        <div id="current-coords">
+            <h3>Выбранные координаты:</h3>
+            <p>Широта: <span id="lat-display">не выбрано</span></p>
+            <p>Долгота: <span id="lng-display">не выбрано</span></p>
+        </div>
+
+        <div id="inputs-section">
+            <h3>Дополнительные данные:</h3>
+            <div id="inputs-container">
+                <div class="input-group">
+                    <input type="text" name="inputs[]" class="input-field" placeholder="Введите данные">
+                    <button type="button" class="btn-remove-input">×</button>
+                </div>
+            </div>
+            <button type="button" id="add-input" class="btn btn-add">Добавить поле</button>
+            <button type="button" id="submit-inputs" class="btn btn-submit">Сохранить данные</button>
+        </div>
+        <div id="saved-points">
+            <h3>Сохранённые точки:</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Широта</th>
+                        <th>Долгота</th>
+                        <th>Дополнительные данные</th>
+                        <th>Дата создания</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for point in data %}
+                    <tr>
+                        <td>{{ point.latitude|floatformat:6 }}</td>
+                        <td>{{ point.longitude|floatformat:6 }}</td>
+                        <td>
+                            {% if point.additional_inputs %}
+                                {{ point.additional_inputs|join:", " }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ point.created_at|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">Нет сохранённых точек</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <a href="{% url 'form' %}" class="back-link">← Вернуться к форме</a>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Инициализация карты
+        const map = L.map('map').setView(
+            {% if data %}[{{ data.0.latitude }}, {{ data.0.longitude }}]{% else %}[55.751244, 37.618423]{% endif %}, 
+            {% if data %}13{% else %}10{% endif %}
+        );
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Добавление маркеров
+        {% for point in data %}
+            L.marker([{{ point.latitude }}, {{ point.longitude }}])
+            .addTo(map)
+            .bindPopup(`
+                <b>Координаты:</b><br>
+                Широта: {{ point.latitude|floatformat:6 }}<br>
+                Долгота: {{ point.longitude|floatformat:6 }}<br>
+                {% if point.additional_inputs %}
+                <b>Данные:</b><br>
+                {{ point.additional_inputs|join:'<br>' }}
+                {% endif %}
+            `);
+        {% endfor %}
+
+        // Обработка клика на карте
+        let selectedLat = null;
+        let selectedLng = null;
+
+        map.on('click', function(e) {
+            selectedLat = e.latlng.lat.toFixed(6);
+            selectedLng = e.latlng.lng.toFixed(6);
+            
+            document.getElementById('lat-display').textContent = selectedLat;
+            document.getElementById('lng-display').textContent = selectedLng;
+        });
+
+        // Управление полями ввода
+        $('#add-input').click(function() {
+            const newInput = `
+                <div class="input-group">
+                    <input type="text" name="inputs[]" class="input-field" placeholder="Введите данные">
+                    <button type="button" class="btn-remove-input">×</button>
+                </div>
+            `;
+            $('#inputs-container').append(newInput);
+        });
+
+        $(document).on('click', '.btn-remove-input', function() {
+            if ($('.input-group').length > 1) {
+                $(this).closest('.input-group').remove();
+            }
+        });
+
+        // Отправка данных
+        $('#submit-inputs').click(function() {
+            if (!selectedLat || !selectedLng) {
+                alert('Сначала выберите точку на карте!');
+                return;
+            }
+
+            const inputs = [];
+            $('input[name="inputs[]"]').each(function() {
+                if ($(this).val().trim() !== '') {
+                    inputs.push($(this).val().trim());
+                }
+            });
+
+            if (inputs.length === 0) {
+                alert('Добавьте хотя бы одно поле с данными!');
+                return;
+            }
+
+            $.ajax({
+                url: "{% url 'save_data' %}",
+                method: "POST",
+                data: {
+                    lat: selectedLat,
+                    lng: selectedLng,
+                    'inputs[]': inputs,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function() {
+                    location.reload();
+                },
+                error: function() {
+                    alert('Ошибка сохранения данных!');
+                }
+            });
+        });
+
+        // Автомасштабирование
+        {% if data %}
+            const markers = L.featureGroup();
+            {% for point in data %}
+                markers.addLayer(L.marker([{{ point.latitude }}, {{ point.longitude }}]));
+            {% endfor %}
+            map.fitBounds(markers.getBounds().pad(0.2));
+        {% endif %}
+    </script>
+</body>
+</html>

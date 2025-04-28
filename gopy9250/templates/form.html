@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Ввод координат</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Стили из вашего исходного кода */
+        .container { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+        .form-group { margin-bottom: 15px; }
+        .field-group { display: flex; align-items: center; gap: 10px; margin: 15px 0; }
+        .input-field { flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-add { background-color: #4CAF50; color: white; }
+        .btn-remove { background-color: #f44336; color: white; }
+        .btn-submit { background-color: #2196F3; color: white; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ввод координат</h1>
+        <form method="post">
+            {% csrf_token %}
+            <div id="fields-container">
+                <div class="form-group">
+                    <div class="field-group">
+                        <input type="number" step="any" name="lat" 
+                               placeholder="Широта" class="input-field" required>
+                        <input type="number" step="any" name="lng" 
+                               placeholder="Долгота" class="input-field" required>
+                        <button type="button" class="btn btn-remove">×</button>
+                    </div>
+                </div>
+            </div>
+            <button type="button" id="add-field" class="btn btn-add">Добавить координаты</button>
+            <button type="submit" class="btn btn-submit">Отобразить на карте</button>
+        </form>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Добавление пары полей
+            $('#add-field').click(function() {
+                const newField = `
+                    <div class="form-group">
+                        <div class="field-group">
+                            <input type="number" step="any" name="lat" 
+                                   placeholder="Широта" class="input-field">
+                            <input type="number" step="any" name="lng" 
+                                   placeholder="Долгота" class="input-field">
+                            <button type="button" class="btn btn-remove">×</button>
+                        </div>
+                    </div>
+                `;
+                $('#fields-container').append(newField);
+            });
+
+            // Удаление поля
+            $(document).on('click', '.btn-remove', function() {
+                if ($('.field-group').length > 1) {
+                    $(this).closest('.form-group').remove();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
